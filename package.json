@@ -1,0 +1,14 @@
+{
+    "name": "es-foto-desc",
+    "version": "1.0.0",
+    "description": "Server WebSocket che descrive le foto con Llama 3.2 Vision via Hugging Face",
+    "main": "server.js",
+    "scripts": {
+        "avvia": "node server.js",
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "dotenv": "^16.4.5",
+        "ws": "^8.18.0"
+    }
+}

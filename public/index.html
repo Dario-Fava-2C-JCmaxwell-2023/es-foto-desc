@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Descrittore Foto AI</title>
+
+    <!-- Font Google Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Libreria per renderizzare il Markdown restituito dall'AI -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* ===== VARIABILI DI COLORE E STILE ===== */
+        :root {
+            --colore-sfondo:         #0d1117;
+            --colore-card:           #161b22;
+            --colore-bordo:          #30363d;
+            --colore-primario:       #7c3aed;
+            --colore-primario-chiaro:#a78bfa;
+            --colore-testo:          #e6edf3;
+            --colore-testo-muted:    #8b949e;
+            --colore-successo:       #3fb950;
+            --colore-errore:         #f85149;
+            --raggio:                14px;
+            --ombra:                 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--colore-sfondo);
+            color: var(--colore-testo);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        /* ===== INTESTAZIONE ===== */
+        header { text-align: center; margin-bottom: 2.5rem; }
+
+        header .icona-titolo {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 0.5rem;
+            filter: drop-shadow(0 0 20px #7c3aed88);
+            animation: pulsazione 3s ease-in-out infinite;
+        }
+
+        @keyframes pulsazione {
+            0%, 100% { transform: scale(1); }
+            50%       { transform: scale(1.06); }
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p { color: var(--colore-testo-muted); margin-top: 0.5rem; font-size: 0.95rem; }
+
+        /* ===== CONTENITORE PRINCIPALE ===== */
+        .contenitore {
+            width: 100%;
+            max-width: 750px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* ===== INDICATORE CONNESSIONE ===== */
+        #statoConnessione {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            background: var(--colore-card);
+            border: 1px solid var(--colore-bordo);
+            width: fit-content;
+            align-self: center;
+        }
+
+        /* Pallino rosso = disconnesso, verde = connesso */
+        .pallino {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: #f85149;
+            transition: background 0.4s;
+        }
+        .pallino.connesso {
+            background: var(--colore-successo);
+            box-shadow: 0 0 8px #3fb95088;
+        }
+
+        /* ===== ZONA DRAG & DROP ===== */
+        .zona-caricamento {
+            background: var(--colore-card);
+            border: 2px dashed var(--colore-bordo);
+            border-radius: var(--raggio);
+            padding: 2.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .zona-caricamento:hover,
+        .zona-caricamento.sopra {
+            border-color: var(--colore-primario-chiaro);
+            background: #1a1427;
+            box-shadow: 0 0 30px rgba(124, 58, 237, 0.15);
+        }
+        .zona-caricamento .icona-upload { font-size: 2.5rem; display: block; margin-bottom: 1rem; }
+        .zona-caricamento h2  { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.4rem; }
+        .zona-caricamento p   { color: var(--colore-testo-muted); font-size: 0.85rem; }
+
+        /* Input file invisibile che copre tutta la zona (rende cliccabile l'intera area) */
+        #inputFile {
+            position: absolute; inset: 0;
+            opacity: 0; cursor: pointer;
+            width: 100%; height: 100%;
+        }
+
+        /* ===== ANTEPRIMA FOTO SELEZIONATA ===== */
+        #contenitoreAnteprima {
+            display: none;
+            background: var(--colore-card);
+            border: 1px solid var(--colore-bordo);
+            border-radius: var(--raggio);
+            padding: 1.5rem;
+            box-shadow: var(--ombra);
+        }
+        #contenitoreAnteprima h3 {
+            font-size: 0.85rem; color: var(--colore-testo-muted);
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;
+        }
+        .riga-anteprima { display: flex; gap: 1.5rem; align-items: flex-start; }
+        #anteprimaFoto {
+            width: 130px; height: 130px;
+            object-fit: cover; border-radius: 10px;
+            border: 1px solid var(--colore-bordo); flex-shrink: 0;
+        }
+        .info-foto { flex: 1; }
+        .info-foto .nome-foto        { font-weight: 600; font-size: 1rem; word-break: break-all; margin-bottom: 0.4rem; }
+        .info-foto .dimensione-foto  { color: var(--colore-testo-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+
+        /* ===== PULSANTE "ANALIZZA CON AI" ===== */
+        #pulsanteAnalizza {
+            background: linear-gradient(135deg, var(--colore-primario), #60a5fa);
+            color: white; border: none; border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 600;
+            cursor: pointer; transition: all 0.25s ease;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        #pulsanteAnalizza:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+        }
+        #pulsanteAnalizza:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ===== AREA RISULTATO DESCRIZIONE AI ===== */
+        #contenitoreRisultato {
+            display: none;
+            background: var(--colore-card);
+            border: 1px solid var(--colore-bordo);
+            border-radius: var(--raggio);
+            padding: 1.5rem; box-shadow: var(--ombra);
+        }
+        #contenitoreRisultato h3 {
+            font-size: 0.85rem; color: var(--colore-testo-muted);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+        }
+        #testoRisultato { line-height: 1.75; font-size: 0.97rem; color: var(--colore-testo); }
+
+        /* Stili per il Markdown renderizzato dall'AI */
+        #testoRisultato h1, #testoRisultato h2, #testoRisultato h3 {
+            color: var(--colore-primario-chiaro); margin: 1rem 0 0.4rem; font-weight: 600;
+        }
+        #testoRisultato h1 { font-size: 1.2rem; }
+        #testoRisultato h2 { font-size: 1.05rem; }
+        #testoRisultato h3 { font-size: 0.97rem; }
+        #testoRisultato p  { margin-bottom: 0.6rem; }
+        #testoRisultato ul, #testoRisultato ol { margin: 0.4rem 0 0.6rem 1.4rem; }
+        #testoRisultato li     { margin-bottom: 0.25rem; }
+        #testoRisultato strong { color: #c9d1d9; }
+        #testoRisultato em     { color: var(--colore-testo-muted); font-style: italic; }
+        #testoRisultato hr     { border: none; border-top: 1px solid var(--colore-bordo); margin: 0.8rem 0; }
+
+        /* ===== SPINNER DI CARICAMENTO (durante analisi foto) ===== */
+        .caricamento { display: flex; align-items: center; gap: 0.75rem; color: var(--colore-testo-muted); }
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2px solid var(--colore-bordo);
+            border-top-color: var(--colore-primario-chiaro);
+            border-radius: 50%;
+            animation: gira 0.7s linear infinite;
+        }
+        @keyframes gira { to { transform: rotate(360deg); } }
+
+        /* ===== ERRORE ===== */
+        .messaggio-errore {
+            color: var(--colore-errore);
+            background: #2a1215; border: 1px solid #5a1d1a;
+            border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem;
+        }
+
+        /* ===== FOOTER ===== */
+        footer { margin-top: 3rem; color: var(--colore-testo-muted); font-size: 0.8rem; text-align: center; }
+
+        /* ===== SEZIONE CHAT ===== */
+        #contenitoreChat {
+            background: var(--colore-card);
+            border: 1px solid var(--colore-bordo);
+            border-radius: var(--raggio);
+            padding: 1.5rem; box-shadow: var(--ombra);
+        }
+        #contenitoreChat h3 {
+            font-size: 0.85rem; color: var(--colore-testo-muted);
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;
+        }
+
+        /* Area messaggi — scorrevole con scrollbar personalizzata */
+        #messaggiChat {
+            display: flex; flex-direction: column; gap: 0.75rem;
+            max-height: 340px; overflow-y: auto;
+            margin-bottom: 1rem; padding-right: 0.25rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--colore-primario) transparent;
+        }
+        #messaggiChat::-webkit-scrollbar       { width: 5px; }
+        #messaggiChat::-webkit-scrollbar-track { background: transparent; }
+        #messaggiChat::-webkit-scrollbar-thumb { background: var(--colore-primario); border-radius: 99px; }
+        #messaggiChat::-webkit-scrollbar-thumb:hover { background: var(--colore-primario-chiaro); }
+
+        /* Bolle messaggi */
+        .bolla {
+            max-width: 80%; padding: 0.65rem 1rem;
+            border-radius: 14px; font-size: 0.92rem;
+            line-height: 1.55; word-break: break-word;
+        }
+        .bolla.utente {                          /* destra, viola */
+            align-self: flex-end;
+            background: var(--colore-primario);
+            color: #fff; border-bottom-right-radius: 4px;
+        }
+        .bolla.ai {                              /* sinistra, scura */
+            align-self: flex-start;
+            background: #1e2530;
+            border: 1px solid var(--colore-bordo);
+            color: var(--colore-testo); border-bottom-left-radius: 4px;
+        }
+
+        /* Riga input + pulsante invia */
+        .riga-input-chat { display: flex; gap: 0.6rem; }
+        #inputChat {
+            flex: 1; background: var(--colore-sfondo);
+            border: 1px solid var(--colore-bordo); border-radius: 8px;
+            padding: 0.6rem 0.9rem;
+            font-family: 'Inter', sans-serif; font-size: 0.9rem; color: var(--colore-testo);
+            outline: none; transition: border-color 0.2s;
+        }
+        #inputChat:focus {
+            border-color: var(--colore-primario-chiaro);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+        #inputChat::placeholder { color: var(--colore-testo-muted); }
+        #pulsanteChat {
+            background: linear-gradient(135deg, var(--colore-primario), #60a5fa);
+            color: white; border: none; border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
+        }
+        #pulsanteChat:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+        }
+        #pulsanteChat:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Bolla "sta scrivendo..." — tre puntini animati */
+        .bolla-caricamento {
+            align-self: flex-start;
+            background: #1e2530; border: 1px solid var(--colore-bordo);
+            border-radius: 14px; border-bottom-left-radius: 4px;
+            padding: 0.75rem 1.1rem;
+            display: flex; gap: 5px; align-items: center;
+        }
+        .bolla-caricamento span {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--colore-primario-chiaro);
+            animation: rimbalzo 1.2s ease-in-out infinite;
+        }
+        .bolla-caricamento span:nth-child(2) { animation-delay: 0.2s; }
+        .bolla-caricamento span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes rimbalzo {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30%            { transform: translateY(-6px); opacity: 1; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- INTESTAZIONE -->
+    <header>
+        <span class="icona-titolo">🔍</span>
+        <h1>Descrittore Foto AI</h1>
+        <p>Carica una foto e l'intelligenza artificiale la descriverà per te</p>
+    </header>
+
+    <div class="contenitore">
+
+        <!-- INDICATORE CONNESSIONE AL SERVER -->
+        <div id="statoConnessione">
+            <div class="pallino" id="pallino"></div>
+            <span id="testoStato">Connessione in corso...</span>
+        </div>
+
+        <!-- ZONA DRAG & DROP / CLICK PER SCEGLIERE LA FOTO -->
+        <div class="zona-caricamento" id="zonaCaricamento">
+            <input type="file" id="inputFile" accept="image/*" />
+            <span class="icona-upload">📁</span>
+            <h2>Trascina qui la tua foto</h2>
+            <p>oppure clicca per sfogliare i file — JPG, PNG, WEBP, GIF</p>
+        </div>
+
+        <!-- ANTEPRIMA + INFO DELLA FOTO SCELTA -->
+        <div id="contenitoreAnteprima">
+            <h3>📷 Foto selezionata</h3>
+            <div class="riga-anteprima">
+                <img id="anteprimaFoto" src="" alt="Anteprima foto" />
+                <div class="info-foto">
+                    <div class="nome-foto" id="nomeFoto">—</div>
+                    <div class="dimensione-foto" id="dimensioneFoto">—</div>
+                    <button id="pulsanteAnalizza" disabled>
+                        ✨ Analizza con AI
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RISULTATO DELLA DESCRIZIONE AI -->
+        <div id="contenitoreRisultato">
+            <h3>🤖 Descrizione AI</h3>
+            <div id="testoRisultato"></div>
+        </div>
+
+        <!-- CHAT — compare dopo la descrizione, permette di fare domande sulla foto -->
+        <div id="sezionChat" style="display:none;">
+            <div id="contenitoreChat">
+                <h3>💬 Chiedi qualcosa sulla foto</h3>
+                <div id="messaggiChat"></div>
+                <div class="riga-input-chat">
+                    <input type="text" id="inputChat"
+                        placeholder="Es: Che animale è? Di che colore è l'oggetto a sinistra?" />
+                    <button id="pulsanteChat">Invia</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ============================================================
+        // RIFERIMENTI AGLI ELEMENTI HTML
+        // ============================================================
+        const zonaCaricamento  = document.getElementById("zonaCaricamento");
+        const inputFile        = document.getElementById("inputFile");
+        const contAnteprima    = document.getElementById("contenitoreAnteprima");
+        const anteprimaFoto    = document.getElementById("anteprimaFoto");
+        const nomeFoto         = document.getElementById("nomeFoto");
+        const dimensioneFoto   = document.getElementById("dimensioneFoto");
+        const pulsanteAnalizza = document.getElementById("pulsanteAnalizza");
+        const contRisultato    = document.getElementById("contenitoreRisultato");
+        const testoRisultato   = document.getElementById("testoRisultato");
+        const pallino          = document.getElementById("pallino");
+        const testoStato       = document.getElementById("testoStato");
+        const sezionChat       = document.getElementById("sezionChat");
+        const messaggiChat     = document.getElementById("messaggiChat");
+        const inputChat        = document.getElementById("inputChat");
+        const pulsanteChat     = document.getElementById("pulsanteChat");
+
+        // ============================================================
+        // VARIABILI DI STATO
+        // ============================================================
+        let socket             = null;  // connessione WebSocket col server
+        let fotoCorrente       = null;  // file immagine scelto dall'utente
+        let datiBase64Correnti = null;  // immagine compressa in base64 (riusata nella chat)
+        let cronologia         = [];    // storia della chat: [{role, content}, ...]
+
+        // ============================================================
+        // CONNESSIONE WEBSOCKET
+        // Il browser comunica col server in tempo reale tramite WebSocket.
+        // Se la connessione cade, riprova ogni 3 secondi.
+        // ============================================================
+        function connetti() {
+            socket = new WebSocket(`ws://${window.location.host}`);
+
+            // Connessione aperta: aggiorna l'indicatore e abilita il pulsante
+            socket.onopen = () => {
+                pallino.classList.add("connesso");
+                testoStato.textContent = "Connesso al server";
+                aggiornaStatoPulsante();
+            };
+
+            // Connessione chiusa: segna come disconnesso e riprova
+            socket.onclose = () => {
+                pallino.classList.remove("connesso");
+                testoStato.textContent = "Disconnesso — riconnessione...";
+                pulsanteAnalizza.disabled = true;
+                setTimeout(connetti, 3000);
+            };
+
+            // Messaggi in arrivo dal server
+            socket.onmessage = (evento) => {
+                const msg = JSON.parse(evento.data);
+
+                if (msg.tipo === "stato") {
+                    // Messaggio di avanzamento (es. "sto analizzando...")
+                    mostraCaricamento(msg.testo);
+
+                } else if (msg.tipo === "descrizione") {
+                    // Descrizione AI ricevuta: la mostra e apre la chat
+                    mostraDescrizione(msg.testo);
+                    pulsanteAnalizza.disabled = false;
+                    sezionChat.style.display = "block";
+                    messaggiChat.innerHTML = "";
+                    // La descrizione diventa il primo messaggio AI nella cronologia
+                    cronologia.push({ role: "assistant", content: msg.testo });
+
+                } else if (msg.tipo === "risposta_chat") {
+                    // Risposta AI alla domanda: rimuove i puntini e mostra la bolla
+                    const bollaLoad = document.getElementById("bollaCaricamentoChat");
+                    if (bollaLoad) bollaLoad.remove();
+                    cronologia.push({ role: "assistant", content: msg.testo });
+                    aggiungiBolla("ai", msg.testo);
+                    inputChat.disabled = false;
+                    pulsanteChat.disabled = false;
+                    inputChat.focus();
+
+                } else if (msg.tipo === "errore") {
+                    // Errore dal server
+                    mostraErrore(msg.testo);
+                    pulsanteAnalizza.disabled = false;
+                }
+            };
+        }
+
+        // ============================================================
+        // SELEZIONE FOTO (click o drag & drop)
+        // ============================================================
+
+        // Selezione tramite dialog file
+        inputFile.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) elaboraFoto(e.target.files[0]);
+        });
+
+        // Drag & Drop: evidenzia la zona mentre si trascina sopra
+        zonaCaricamento.addEventListener("dragover",  (e) => { e.preventDefault(); zonaCaricamento.classList.add("sopra"); });
+        zonaCaricamento.addEventListener("dragleave", ()  => zonaCaricamento.classList.remove("sopra"));
+        zonaCaricamento.addEventListener("drop", (e) => {
+            e.preventDefault();
+            zonaCaricamento.classList.remove("sopra");
+            if (e.dataTransfer.files.length > 0) elaboraFoto(e.dataTransfer.files[0]);
+        });
+
+        // Legge il file, mostra l'anteprima e resetta la chat precedente
+        function elaboraFoto(file) {
+            if (!file.type.startsWith("image/")) {
+                alert("Seleziona un file immagine (JPG, PNG, ecc.)");
+                return;
+            }
+
+            fotoCorrente = file;
+
+            // Nasconde la chat di una foto precedente
+            sezionChat.style.display = "none";
+            messaggiChat.innerHTML = "";
+
+            // Mostra nome e dimensione del file
+            nomeFoto.textContent = file.name;
+            dimensioneFoto.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+
+            // Legge il file e mostra l'anteprima dell'immagine
+            const lettore = new FileReader();
+            lettore.onload = (e) => {
+                anteprimaFoto.src = e.target.result;
+                contAnteprima.style.display = "block";
+                contRisultato.style.display = "none";  // nasconde il risultato precedente
+                aggiornaStatoPulsante();
+            };
+            lettore.readAsDataURL(file);
+        }
+
+        // Il pulsante "Analizza" è attivo solo se c'è una foto E siamo connessi
+        function aggiornaStatoPulsante() {
+            pulsanteAnalizza.disabled = !(fotoCorrente && socket && socket.readyState === WebSocket.OPEN);
+        }
+
+        // ============================================================
+        // INVIO FOTO AL SERVER
+        // Prima di inviare, comprime l'immagine via Canvas (max 1024px, JPEG).
+        // Questo risolve problemi con AVIF, immagini >4MB e formati non standard.
+        // ============================================================
+        pulsanteAnalizza.addEventListener("click", () => {
+            if (!fotoCorrente || !socket) return;
+
+            pulsanteAnalizza.disabled = true;
+            mostraCaricamento("⏳ Comprimo e invio la foto...");
+
+            const img = new Image();
+            const urlTemp = URL.createObjectURL(fotoCorrente);
+
+            img.onload = () => {
+                URL.revokeObjectURL(urlTemp);
+
+                // Ridimensiona mantenendo le proporzioni (lato lungo max 1024px)
+                const MAX = 1024;
+                let w = img.width, h = img.height;
+                if (w > MAX || h > MAX) {
+                    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                    else       { w = Math.round(w * MAX / h); h = MAX; }
+                }
+
+                // Disegna su canvas e converte in JPEG base64
+                const canvas = document.createElement("canvas");
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                const datiBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+                // Salva il base64 per riusarlo nelle domande chat; azzera la cronologia
+                datiBase64Correnti = datiBase64;
+                cronologia = [];
+
+                socket.send(JSON.stringify({
+                    tipo: "analizza_foto",
+                    nomeFoto: fotoCorrente.name,
+                    datiBase64: datiBase64
+                }));
+            };
+
+            img.onerror = () => {
+                mostraErrore("Impossibile leggere l'immagine. Prova con un altro file.");
+                pulsanteAnalizza.disabled = false;
+            };
+
+            img.src = urlTemp;
+        });
+
+        // ============================================================
+        // CHAT — domande sulla foto
+        // L'utente può fare domande sulla foto già descritta.
+        // Il client manda la domanda + la cronologia al server,
+        // che la gira a Groq insieme all'immagine originale.
+        // ============================================================
+        function inviaDomandaChat() {
+            const domanda = inputChat.value.trim();
+            if (!domanda || !socket || !datiBase64Correnti) return;
+
+            // Mostra subito la domanda nella chat
+            aggiungiBolla("utente", domanda);
+
+            // Aggiunge la domanda alla cronologia
+            cronologia.push({ role: "user", content: domanda });
+
+            // Blocca l'input mentre aspetta la risposta
+            inputChat.value = "";
+            inputChat.disabled = true;
+            pulsanteChat.disabled = true;
+
+            // Mostra i tre puntini animati ("sta scrivendo...")
+            const bollaLoad = document.createElement("div");
+            bollaLoad.className = "bolla-caricamento";
+            bollaLoad.id = "bollaCaricamentoChat";
+            bollaLoad.innerHTML = "<span></span><span></span><span></span>";
+            messaggiChat.appendChild(bollaLoad);
+            messaggiChat.scrollTop = messaggiChat.scrollHeight;
+
+            // Manda al server: foto + cronologia + domanda
+            // (la cronologia.slice(0,-1) esclude la domanda appena aggiunta,
+            //  che viene mandata separatamente nel campo "domanda")
+            socket.send(JSON.stringify({
+                tipo: "domanda_chat",
+                domanda: domanda,
+                datiBase64: datiBase64Correnti,
+                cronologia: cronologia.slice(0, -1)
+            }));
+        }
+
+        // Invia con click o premendo Invio
+        pulsanteChat.addEventListener("click", inviaDomandaChat);
+        inputChat.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); inviaDomandaChat(); }
+        });
+
+        // ============================================================
+        // FUNZIONI DI VISUALIZZAZIONE
+        // ============================================================
+
+        // Mostra uno spinner con un messaggio (durante l'attesa)
+        function mostraCaricamento(testo) {
+            contRisultato.style.display = "block";
+            testoRisultato.innerHTML = `<div class="caricamento"><div class="spinner"></div>${testo}</div>`;
+        }
+
+        // Mostra il testo della descrizione AI (renderizzato come Markdown)
+        function mostraDescrizione(testo) {
+            contRisultato.style.display = "block";
+            testoRisultato.innerHTML = marked.parse(testo);
+        }
+
+        // Mostra un messaggio di errore
+        function mostraErrore(testo) {
+            contRisultato.style.display = "block";
+            testoRisultato.innerHTML = `<div class="messaggio-errore">❌ ${testo}</div>`;
+        }
+
+        // Aggiunge una bolla nella chat (tipo = "utente" o "ai")
+        function aggiungiBolla(tipo, testo) {
+            const bolla = document.createElement("div");
+            bolla.className = `bolla ${tipo}`;
+            // L'AI usa Markdown; le domande utente vengono sanificate per sicurezza
+            bolla.innerHTML = tipo === "ai" ? marked.parse(testo) : escapeHtml(testo);
+            messaggiChat.appendChild(bolla);
+            messaggiChat.scrollTop = messaggiChat.scrollHeight;
+        }
+
+        // Converte caratteri speciali HTML in entità sicure (evita XSS)
+        function escapeHtml(testo) {
+            return testo
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        // ============================================================
+        // AVVIO — apre la connessione WebSocket col server
+        // ============================================================
+        connetti();
+    </script>
+</body>
+
+</html>

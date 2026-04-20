@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Documentazione — Descrittore Foto AI</title>
+    <meta name="description" content="Documentazione completa del progetto Descrittore Foto AI: architettura, API, flusso dati e guida all'uso." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <style>
+        /* ==================== TOKENS ==================== */
+        :root {
+            --bg:           #0d1117;
+            --bg-card:      #161b22;
+            --bg-code:      #0e1318;
+            --border:       #30363d;
+            --border-hover: #58a6ff44;
+            --primary:      #7c3aed;
+            --primary-l:    #a78bfa;
+            --blue:         #60a5fa;
+            --green:        #3fb950;
+            --orange:       #f0883e;
+            --red:          #f85149;
+            --yellow:       #e3b341;
+            --text:         #e6edf3;
+            --text-muted:   #8b949e;
+            --radius:       12px;
+            --shadow:       0 8px 32px rgba(0,0,0,.45);
+            --font-mono:    'JetBrains Mono', monospace;
+        }
+
+        /* ==================== RESET ==================== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
+        }
+
+        /* ==================== SIDEBAR ==================== */
+        nav {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) transparent;
+        }
+        nav::-webkit-scrollbar { width: 4px; }
+        nav::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 99px; }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+        .nav-logo .emoji { font-size: 1.6rem; filter: drop-shadow(0 0 10px #7c3aedaa); }
+        .nav-logo span {
+            font-size: 0.95rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-l), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-section {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            padding: 0.9rem 0.5rem 0.3rem;
+        }
+
+        nav a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 7px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        nav a:hover, nav a.active {
+            color: var(--text);
+            background: rgba(124,58,237,0.12);
+            border-color: rgba(124,58,237,0.25);
+        }
+        nav a .nav-icon { font-size: 0.95rem; opacity: 0.8; }
+
+        /* ==================== MAIN ==================== */
+        main {
+            padding: 3rem 4rem;
+            max-width: 900px;
+        }
+
+        /* ==================== PAGE HERO ==================== */
+        .hero {
+            margin-bottom: 3.5rem;
+            padding-bottom: 2.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(124,58,237,0.15);
+            border: 1px solid rgba(124,58,237,0.35);
+            color: var(--primary-l);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.3rem 0.7rem;
+            border-radius: 99px;
+            margin-bottom: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .hero h1 {
+            font-size: 2.6rem;
+            font-weight: 700;
+            line-height: 1.2;
+            background: linear-gradient(135deg, var(--primary-l) 0%, var(--blue) 60%, #6ee7b7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        .hero p {
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            max-width: 680px;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        .stat-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.4rem 0.85rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .stat-chip .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+        }
+
+        /* ==================== SECTIONS ==================== */
+        section { margin-bottom: 3.5rem; }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 1px solid var(--border);
+        }
+        h2 .h2-icon { font-size: 1.2rem; }
+
+        h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--primary-l);
+            margin: 1.75rem 0 0.6rem;
+        }
+
+        p { color: var(--text-muted); margin-bottom: 0.75rem; }
+        p strong { color: var(--text); }
+
+        /* ==================== CODE BLOCKS ==================== */
+        pre {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem 1.5rem;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 0.83rem;
+            line-height: 1.7;
+            margin: 1rem 0;
+            position: relative;
+        }
+        pre .lang-tag {
+            position: absolute;
+            top: 0.6rem; right: 0.8rem;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        code { font-family: var(--font-mono); font-size: 0.85em; }
+        p code, li code {
+            background: rgba(124,58,237,0.15);
+            border: 1px solid rgba(124,58,237,0.2);
+            border-radius: 4px;
+            padding: 0.1em 0.4em;
+            color: var(--primary-l);
+        }
+
+        /* Syntax coloring helpers */
+        .kw  { color: #ff7b72; }   /* keywords */
+        .str { color: #a5d6ff; }   /* strings */
+        .cmt { color: #8b949e; font-style: italic; } /* comments */
+        .fn  { color: #d2a8ff; }   /* functions */
+        .num { color: #79c0ff; }   /* numbers / consts */
+        .prop{ color: #7ce38b; }   /* properties */
+
+        /* ==================== INFO CARDS ==================== */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+            margin: 1.25rem 0;
+        }
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .info-card:hover {
+            border-color: rgba(124,58,237,0.4);
+            box-shadow: 0 4px 20px rgba(124,58,237,0.1);
+        }
+        .info-card .card-icon { font-size: 1.5rem; margin-bottom: 0.6rem; display: block; }
+        .info-card .card-title { font-weight: 600; font-size: 0.9rem; color: var(--text); margin-bottom: 0.3rem; }
+        .info-card .card-desc  { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+
+        /* ==================== FLOW DIAGRAM ==================== */
+        .flow {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0;
+            margin: 1.5rem 0;
+        }
+        .flow-step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.65rem 1rem;
+            font-size: 0.82rem;
+            color: var(--text);
+            white-space: nowrap;
+            text-align: center;
+        }
+        .flow-step.highlight {
+            border-color: var(--primary);
+            background: rgba(124,58,237,0.1);
+            color: var(--primary-l);
+        }
+        .flow-arrow {
+            color: var(--text-muted);
+            font-size: 1rem;
+            padding: 0 0.4rem;
+        }
+
+        /* ==================== ALERTS ==================== */
+        .alert {
+            border-radius: var(--radius);
+            padding: 1rem 1.2rem;
+            margin: 1.2rem 0;
+            font-size: 0.875rem;
+            border-left: 3px solid;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .alert .alert-icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.1rem; }
+        .alert.info    { background: rgba(96,165,250,0.08);  border-color: var(--blue);   color: #93c5fd; }
+        .alert.warning { background: rgba(240,136,62,0.08);  border-color: var(--orange); color: #fdba74; }
+        .alert.danger  { background: rgba(248,81,73,0.08);   border-color: var(--red);    color: #fca5a5; }
+        .alert.success { background: rgba(63,185,80,0.08);   border-color: var(--green);  color: #86efac; }
+        .alert p { color: inherit; margin: 0; }
+
+        /* ==================== TABLE ==================== */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1.2rem 0;
+            font-size: 0.86rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        thead tr { background: rgba(124,58,237,0.15); }
+        th {
+            padding: 0.7rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary-l);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        td:first-child { color: var(--text); font-family: var(--font-mono); }
+        tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* ==================== STEP LIST ==================== */
+        .step-list { list-style: none; counter-reset: steps; }
+        .step-list li {
+            counter-increment: steps;
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            align-items: flex-start;
+        }
+        .step-list li::before {
+            content: counter(steps);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px; height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--blue));
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-list li .step-body p { margin: 0; }
+        .step-list li .step-title { font-weight: 600; color: var(--text); font-size: 0.95rem; margin-bottom: 0.2rem; }
+
+        /* ==================== MSG TYPE BLOCKS ==================== */
+        .msg-block {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .msg-block .msg-type {
+            display: inline-block;
+            background: rgba(124,58,237,0.2);
+            color: var(--primary-l);
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            padding: 0.15rem 0.55rem;
+            border-radius: 5px;
+            margin-bottom: 0.6rem;
+        }
+        .msg-block .msg-dir {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+        .msg-block p { margin: 0.4rem 0 0; font-size: 0.87rem; }
+
+        /* ==================== FOOTER ==================== */
+        footer {
+            grid-column: 1 / -1;
+            border-top: 1px solid var(--border);
+            padding: 1.5rem 4rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        /* ==================== SCROLLBAR ==================== */
+        * { scrollbar-width: thin; scrollbar-color: var(--primary) transparent; }
+        ::-webkit-scrollbar       { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 99px; }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 900px) {
+            body { grid-template-columns: 1fr; }
+            nav  { position: static; height: auto; flex-direction: row; flex-wrap: wrap; padding: 1rem; border-right: none; border-bottom: 1px solid var(--border); }
+            main { padding: 2rem 1.5rem; }
+            footer { padding: 1.5rem; }
+        }
+
+        /* ==================== ANIMATIONS ==================== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        section { animation: fadeInUp 0.4s ease both; }
+        section:nth-child(2)  { animation-delay: 0.05s; }
+        section:nth-child(3)  { animation-delay: 0.10s; }
+        section:nth-child(4)  { animation-delay: 0.15s; }
+        section:nth-child(5)  { animation-delay: 0.20s; }
+        section:nth-child(6)  { animation-delay: 0.25s; }
+        section:nth-child(7)  { animation-delay: 0.30s; }
+        section:nth-child(8)  { animation-delay: 0.35s; }
+    </style>
+</head>
+<body>
+
+<!-- ===================== SIDEBAR NAV ===================== -->
+<nav id="sidebar">
+    <div class="nav-logo">
+        <span class="emoji">🔍</span>
+        <span>Foto AI Docs</span>
+    </div>
+
+    <span class="nav-section">Introduzione</span>
+    <a href="#panoramica"    class="active"><span class="nav-icon">📖</span> Panoramica</a>
+    <a href="#stack"><span class="nav-icon">🧩</span> Stack tecnologico</a>
+    <a href="#struttura"><span class="nav-icon">📁</span> Struttura file</a>
+
+    <span class="nav-section">Guida rapida</span>
+    <a href="#installazione"><span class="nav-icon">⚡</span> Installazione</a>
+    <a href="#configurazione"><span class="nav-icon">🔑</span> Configurazione .env</a>
+    <a href="#avvio"><span class="nav-icon">🚀</span> Avvio server</a>
+
+    <span class="nav-section">Architettura</span>
+    <a href="#flusso"><span class="nav-icon">🔄</span> Flusso dati</a>
+    <a href="#websocket"><span class="nav-icon">🔌</span> Protocollo WebSocket</a>
+    <a href="#api-groq"><span class="nav-icon">🤖</span> API Groq / Llama 4</a>
+
+    <span class="nav-section">Frontend</span>
+    <a href="#interfaccia"><span class="nav-icon">🖼️</span> Interfaccia utente</a>
+    <a href="#compressione"><span class="nav-icon">📦</span> Compressione immagini</a>
+    <a href="#chat"><span class="nav-icon">💬</span> Modulo chat</a>
+
+    <span class="nav-section">Backend</span>
+    <a href="#server-http"><span class="nav-icon">🌐</span> Server HTTP</a>
+    <a href="#server-ws"><span class="nav-icon">📡</span> Server WebSocket</a>
+    <a href="#funzioni"><span class="nav-icon">⚙️</span> Funzioni di supporto</a>
+
+    <span class="nav-section">Riferimento</span>
+    <a href="#variabili"><span class="nav-icon">🔧</span> Variabili d'ambiente</a>
+    <a href="#errori"><span class="nav-icon">🛑</span> Gestione errori</a>
+    <a href="#sicurezza"><span class="nav-icon">🛡️</span> Sicurezza</a>
+</nav>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+<main>
+
+    <!-- HERO -->
+    <div class="hero" id="panoramica">
+        <div class="badge">🔍 v1.0 — Documentazione ufficiale</div>
+        <h1>Descrittore Foto AI</h1>
+        <p>
+            Un'applicazione web <strong>real-time</strong> che usa l'intelligenza artificiale multimodale
+            per analizzare qualsiasi immagine e restituire una descrizione dettagliata in italiano.
+            Dopo l'analisi, l'utente può continuare la conversazione con l'AI tramite una chat contestuale.
+        </p>
+
+        <div class="stats-row">
+            <div class="stat-chip"><span class="dot" style="background:#3fb950"></span> Node.js + WebSocket</div>
+            <div class="stat-chip"><span class="dot" style="background:#7c3aed"></span> Groq API · Llama 4 Scout</div>
+            <div class="stat-chip"><span class="dot" style="background:#60a5fa"></span> Porta predefinita: 3000</div>
+            <div class="stat-chip"><span class="dot" style="background:#f0883e"></span> JavaScript puro (niente framework)</div>
+        </div>
+    </div>
+
+    <!-- ====== STACK ====== -->
+    <section id="stack">
+        <h2><span class="h2-icon">🧩</span> Stack tecnologico</h2>
+        <p>Il progetto è interamente scritto in <strong>JavaScript</strong>, senza framework aggiuntivi né bundler. Le dipendenze esterne sono ridotte al minimo.</p>
+
+        <div class="card-grid">
+            <div class="info-card">
+                <span class="card-icon">🟢</span>
+                <div class="card-title">Node.js (runtime)</div>
+                <div class="card-desc">Esegue il server HTTP e WebSocket lato backend, senza browser.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">📡</span>
+                <div class="card-title">ws (WebSocket)</div>
+                <div class="card-desc">Libreria leggera per comunicazione bidirezionale in tempo reale tra browser e server.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🔐</span>
+                <div class="card-title">dotenv</div>
+                <div class="card-desc">Carica le variabili d'ambiente dal file <code>.env</code> senza esporle nel codice.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🤖</span>
+                <div class="card-title">Groq API</div>
+                <div class="card-desc">Servizio cloud ultra-veloce per inferenza LLM. Usato per l'analisi visiva.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🦙</span>
+                <div class="card-title">Llama 4 Scout</div>
+                <div class="card-desc">Modello multimodale di Meta. Legge testo <em>e</em> immagini nello stesso contesto.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">📝</span>
+                <div class="card-title">marked.js (CDN)</div>
+                <div class="card-desc">Parser Markdown lato client. Trasforma le risposte AI in HTML formattato.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====== STRUTTURA FILE ====== -->
+    <section id="struttura">
+        <h2><span class="h2-icon">📁</span> Struttura del progetto</h2>
+        <p>Il progetto ha una struttura volutamente minimale: un unico file server e un'unica pagina frontend.</p>
+
+        <pre><span class="cmt"># Struttura directory</span>
+EsFotoDesc_DefinitiveEdition/
+├── <span class="prop">server.js</span>          <span class="cmt"># Backend Node.js (HTTP + WebSocket + Groq)</span>
+├── <span class="prop">.env</span>               <span class="cmt"># Variabili d'ambiente (chiave API, porta)</span>
+├── <span class="prop">package.json</span>       <span class="cmt"># Dipendenze e script npm</span>
+├── <span class="prop">package-lock.json</span>  <span class="cmt"># Lock delle versioni dipendenze</span>
+├── <span class="prop">.gitignore</span>         <span class="cmt"># Esclude node_modules e .env dal repository</span>
+├── <span class="prop">documentazione.html</span><span class="cmt"># ← Questo file</span>
+└── public/
+    └── <span class="prop">index.html</span>     <span class="cmt"># Frontend (HTML + CSS + JS, tutto in un file)</span><span class="lang-tag">TREE</span></pre>
+
+        <div class="alert info">
+            <span class="alert-icon">💡</span>
+            <p>La cartella <code>public/</code> è servita staticamente dal server HTTP. Puoi aggiungere ulteriori file (CSS, immagini, JS) nella stessa cartella e saranno accessibili via browser.</p>
+        </div>
+    </section>
+
+    <!-- ====== INSTALLAZIONE ====== -->
+    <section id="installazione">
+        <h2><span class="h2-icon">⚡</span> Installazione</h2>
+        <p>Il progetto richiede <strong>Node.js ≥ 18</strong> installato sul sistema.</p>
+
+        <ol class="step-list">
+            <li>
+                <div class="step-body">
+                    <div class="step-title">Clona o scarica il progetto</div>
+                    <pre><span class="kw">git clone</span> &lt;url-repository&gt;
+<span class="fn">cd</span> EsFotoDesc_DefinitiveEdition<span class="lang-tag">BASH</span></pre>
+                </div>
+            </li>
+            <li>
+                <div class="step-body">
+                    <div class="step-title">Installa le dipendenze</div>
+                    <pre><span class="fn">npm</span> install<span class="lang-tag">BASH</span></pre>
+                    <p>Questo installerà <code>dotenv</code> e <code>ws</code> nella cartella <code>node_modules/</code>.</p>
+                </div>
+            </li>
+            <li>
+                <div class="step-body">
+                    <div class="step-title">Configura la chiave API</div>
+                    <p>Vedi la sezione <a href="#configurazione" style="color:var(--primary-l)">Configurazione .env</a> qui sotto.</p>
+                </div>
+            </li>
+            <li>
+                <div class="step-body">
+                    <div class="step-title">Avvia il server</div>
+                    <pre><span class="fn">npm</span> start<span class="lang-tag">BASH</span></pre>
+                    <p>Apri il browser su <code>http://localhost:3000</code>.</p>
+                </div>
+            </li>
+        </ol>
+    </section>
+
+    <!-- ====== CONFIGURAZIONE ====== -->
+    <section id="configurazione">
+        <h2><span class="h2-icon">🔑</span> Configurazione .env</h2>
+        <p>
+            Il file <code>.env</code> nella root del progetto contiene le variabili d'ambiente necessarie.
+            <strong>Non condividere mai questo file</strong> pubblicamente: contiene la tua chiave API privata.
+        </p>
+
+        <pre><span class="cmt"># File: .env</span>
+
+<span class="cmt"># Chiave API Groq (gratuita, senza carta di credito)</span>
+<span class="cmt"># Ottienila su: https://console.groq.com/keys</span>
+<span class="prop">GROQ_KEY</span>=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+<span class="cmt"># Porta su cui il server ascolterà (opzionale, default: 3000)</span>
+<span class="prop">PORT</span>=3000<span class="lang-tag">.ENV</span></pre>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Variabile</th>
+                    <th>Obbligatoria</th>
+                    <th>Default</th>
+                    <th>Descrizione</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>GROQ_KEY</td>
+                    <td>✅ Sì</td>
+                    <td>—</td>
+                    <td>Chiave segreta per autenticarsi all'API Groq. Il server non si avvia senza di essa.</td>
+                </tr>
+                <tr>
+                    <td>PORT</td>
+                    <td>❌ No</td>
+                    <td>3000</td>
+                    <td>Porta TCP su cui server HTTP e WebSocket ascoltano contemporaneamente.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert warning">
+            <span class="alert-icon">⚠️</span>
+            <p><strong>Attenzione:</strong> se <code>GROQ_KEY</code> manca o contiene il valore segnaposto <code>inserisci_la_tua_chiave_qui</code>, il server terminerà immediatamente con un messaggio di errore.</p>
+        </div>
+
+        <p>Come ottenere una chiave Groq gratuita:</p>
+        <ol class="step-list">
+            <li><div class="step-body"><div class="step-title">Vai su console.groq.com/keys</div></div></li>
+            <li><div class="step-body"><div class="step-title">Crea un account (nessuna carta di credito richiesta)</div></div></li>
+            <li><div class="step-body"><div class="step-title">Clicca "Create API Key" e copia il valore</div></div></li>
+            <li><div class="step-body"><div class="step-title">Incollalo nel file .env al posto del valore di esempio</div></div></li>
+        </ol>
+    </section>
+
+    <!-- ====== AVVIO ====== -->
+    <section id="avvio">
+        <h2><span class="h2-icon">🚀</span> Avvio del server</h2>
+
+        <pre><span class="cmt"># Metodo 1 — script npm</span>
+<span class="fn">npm</span> start
+
+<span class="cmt"># Metodo 2 — comando alternativo definito in package.json</span>
+<span class="fn">npm</span> run avvia
+
+<span class="cmt"># Metodo 3 — direttamente con Node</span>
+<span class="fn">node</span> server.js<span class="lang-tag">BASH</span></pre>
+
+        <p>A server avviato correttamente, la console mostra:</p>
+        <pre><span class="cmt">====================================================</span>
+<span class="str">🚀 Server avviato!</span>
+   Pagina web → <span class="num">http://localhost:3000</span>
+   AI         → <span class="prop">meta-llama/llama-4-scout-17b-16e-instruct</span> (Groq)
+<span class="cmt">====================================================</span><span class="lang-tag">OUTPUT</span></pre>
+    </section>
+
+    <!-- ====== FLUSSO DATI ====== -->
+    <section id="flusso">
+        <h2><span class="h2-icon">🔄</span> Flusso dati completo</h2>
+        <p>Di seguito il percorso che ogni interazione compie dall'utente all'AI e ritorno.</p>
+
+        <h3>Analisi iniziale foto</h3>
+        <div class="flow">
+            <div class="flow-step">👤 Utente<br>carica foto</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">📦 Canvas API<br>comprime a JPEG</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">🔌 WebSocket<br>invia base64</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">⚙️ Server<br>Node.js</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">🤖 Groq API<br>Llama 4 Scout</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">📝 Descrizione<br>in italiano</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">🖥️ Browser<br>mostra risultato</div>
+        </div>
+
+        <h3>Chat contestuale (follow-up)</h3>
+        <div class="flow">
+            <div class="flow-step">👤 Utente<br>scrive domanda</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">🔌 WebSocket<br>foto + cronologia + domanda</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">⚙️ Server<br>ricostruisce contesto</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">🤖 Groq API<br>risposta contestuale</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">💬 Bolla chat<br>nel browser</div>
+        </div>
+
+        <div class="alert info">
+            <span class="alert-icon">💡</span>
+            <p>L'immagine viene <strong>ri-inviata ad ogni domanda</strong> insieme alla cronologia. Questo garantisce che Llama 4 Scout abbia sempre il contesto visivo completo, poiché l'API è stateless.</p>
+        </div>
+    </section>
+
+    <!-- ====== WEBSOCKET ====== -->
+    <section id="websocket">
+        <h2><span class="h2-icon">🔌</span> Protocollo WebSocket</h2>
+        <p>
+            Tutta la comunicazione tra browser e server avviene tramite <strong>messaggi JSON</strong> su una connessione WebSocket persistente.
+            Ogni messaggio ha un campo <code>tipo</code> che identifica il tipo di operazione.
+        </p>
+
+        <h3>Messaggi inviati dal Browser → Server</h3>
+
+        <div class="msg-block">
+            <span class="msg-type">analizza_foto</span>
+            <span class="msg-dir">Browser → Server</span>
+            <p>Richiesta di analisi di una nuova immagine.</p>
+            <pre>{
+  <span class="prop">"tipo"</span>:      <span class="str">"analizza_foto"</span>,
+  <span class="prop">"nomeFoto"</span>:  <span class="str">"vacanza.jpg"</span>,
+  <span class="prop">"datiBase64"</span>: <span class="str">"data:image/jpeg;base64,/9j/4AAQ..."</span>
+}<span class="lang-tag">JSON</span></pre>
+        </div>
+
+        <div class="msg-block">
+            <span class="msg-type">domanda_chat</span>
+            <span class="msg-dir">Browser → Server</span>
+            <p>Domanda di follow-up sulla foto già analizzata.</p>
+            <pre>{
+  <span class="prop">"tipo"</span>:       <span class="str">"domanda_chat"</span>,
+  <span class="prop">"domanda"</span>:    <span class="str">"Che animale è quello a sinistra?"</span>,
+  <span class="prop">"datiBase64"</span>: <span class="str">"data:image/jpeg;base64,/9j/4AAQ..."</span>,
+  <span class="prop">"cronologia"</span>: [
+    { <span class="prop">"role"</span>: <span class="str">"assistant"</span>, <span class="prop">"content"</span>: <span class="str">"[Prima descrizione AI]"</span> }
+  ]
+}<span class="lang-tag">JSON</span></pre>
+        </div>
+
+        <h3>Messaggi inviati dal Server → Browser</h3>
+
+        <div class="msg-block">
+            <span class="msg-type">stato</span>
+            <span class="msg-dir">Server → Browser</span>
+            <p>Messaggio di avanzamento, mostrato come spinner all'utente.</p>
+            <pre>{ <span class="prop">"tipo"</span>: <span class="str">"stato"</span>, <span class="prop">"testo"</span>: <span class="str">"⏳ Sto analizzando la foto con l'AI..."</span> }<span class="lang-tag">JSON</span></pre>
+        </div>
+
+        <div class="msg-block">
+            <span class="msg-type">descrizione</span>
+            <span class="msg-dir">Server → Browser</span>
+            <p>Descrizione completa generata dall'AI. Il testo è in formato Markdown.</p>
+            <pre>{ <span class="prop">"tipo"</span>: <span class="str">"descrizione"</span>, <span class="prop">"testo"</span>: <span class="str">"## Descrizione\n..."</span>, <span class="prop">"nomeFoto"</span>: <span class="str">"vacanza.jpg"</span> }<span class="lang-tag">JSON</span></pre>
+        </div>
+
+        <div class="msg-block">
+            <span class="msg-type">risposta_chat</span>
+            <span class="msg-dir">Server → Browser</span>
+            <p>Risposta AI a una domanda chat.</p>
+            <pre>{ <span class="prop">"tipo"</span>: <span class="str">"risposta_chat"</span>, <span class="prop">"testo"</span>: <span class="str">"Si tratta di un gatto tigrato..."</span> }<span class="lang-tag">JSON</span></pre>
+        </div>
+
+        <div class="msg-block">
+            <span class="msg-type">errore</span>
+            <span class="msg-dir">Server → Browser</span>
+            <p>Qualsiasi errore avvenuto lato server (timeout API, formato immagine non valido, ecc.).</p>
+            <pre>{ <span class="prop">"tipo"</span>: <span class="str">"errore"</span>, <span class="prop">"testo"</span>: <span class="str">"API Groq (429): Rate limit exceeded"</span> }<span class="lang-tag">JSON</span></pre>
+        </div>
+
+        <h3>Riconnessione automatica</h3>
+        <p>Se la connessione WebSocket cade (es. riavvio del server), il client attende <strong>3 secondi</strong> e tenta automaticamente la riconnessione, aggiornando l'indicatore di stato nel badge in cima alla pagina.</p>
+    </section>
+
+    <!-- ====== API GROQ ====== -->
+    <section id="api-groq">
+        <h2><span class="h2-icon">🤖</span> API Groq — Llama 4 Scout</h2>
+        <p>
+            Il server chiama l'endpoint OpenAI-compatibile di Groq usando il metodo nativo <code>fetch</code> di Node.js (≥18).
+        </p>
+
+        <table>
+            <thead><tr><th>Parametro</th><th>Valore</th><th>Note</th></tr></thead>
+            <tbody>
+                <tr><td>endpoint</td><td>https://api.groq.com/openai/v1/chat/completions</td><td>Compatibile con l'SDK OpenAI</td></tr>
+                <tr><td>model</td><td>meta-llama/llama-4-scout-17b-16e-instruct</td><td>Modello multimodale (testo + immagini)</td></tr>
+                <tr><td>max_tokens</td><td>1024</td><td>Limite risposta AI</td></tr>
+                <tr><td>Authorization</td><td>Bearer {GROQ_KEY}</td><td>Letta da .env</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Struttura della richiesta (analisi foto)</h3>
+        <pre>{
+  <span class="prop">"model"</span>:      <span class="str">"meta-llama/llama-4-scout-17b-16e-instruct"</span>,
+  <span class="prop">"max_tokens"</span>: <span class="num">1024</span>,
+  <span class="prop">"messages"</span>: [
+    {
+      <span class="prop">"role"</span>: <span class="str">"user"</span>,
+      <span class="prop">"content"</span>: [
+        {
+          <span class="prop">"type"</span>: <span class="str">"image_url"</span>,
+          <span class="prop">"image_url"</span>: { <span class="prop">"url"</span>: <span class="str">"data:image/jpeg;base64,..."</span> }
+        },
+        {
+          <span class="prop">"type"</span>: <span class="str">"text"</span>,
+          <span class="prop">"text"</span>: <span class="str">"Analizza questa immagine e descrivi in italiano:\n1. Cosa vedi...\n..."</span>
+        }
+      ]
+    }
+  ]
+}<span class="lang-tag">JSON</span></pre>
+
+        <h3>Prompt di sistema (analisi foto)</h3>
+        <p>Il prompt istruisce il modello a rispondere sempre in italiano, strutturando la risposta in quattro punti:</p>
+        <pre><span class="num">1.</span> Cosa vedi (oggetti, persone, animali, luoghi)
+<span class="num">2.</span> I colori principali
+<span class="num">3.</span> L'atmosfera o il contesto generale
+<span class="num">4.</span> Eventuali elementi interessanti o particolari<span class="lang-tag">PROMPT</span></pre>
+    </section>
+
+    <!-- ====== INTERFACCIA ====== -->
+    <section id="interfaccia">
+        <h2><span class="h2-icon">🖼️</span> Interfaccia utente</h2>
+        <p>Il frontend è contenuto interamente in <code>public/index.html</code>. Utilizza CSS custom properties, Google Font Inter e animazioni CSS native.</p>
+
+        <div class="card-grid">
+            <div class="info-card">
+                <span class="card-icon">🟢</span>
+                <div class="card-title">Indicatore connessione</div>
+                <div class="card-desc">Pallino rosso/verde che mostra lo stato WebSocket in tempo reale.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">📁</span>
+                <div class="card-title">Zona drag &amp; drop</div>
+                <div class="card-desc">Area di caricamento che accetta file trascinati o selezionati via dialog.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🖼️</span>
+                <div class="card-title">Anteprima foto</div>
+                <div class="card-desc">Thumbnail 130×130px con nome file, dimensione e pulsante Analizza.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">⏳</span>
+                <div class="card-title">Spinner animato</div>
+                <div class="card-desc">Mostrato durante l'elaborazione AI. Scompare quando arriva la risposta.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">📝</span>
+                <div class="card-title">Descrizione Markdown</div>
+                <div class="card-desc">La risposta AI viene renderizzata come HTML ricco tramite marked.js.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">💬</span>
+                <div class="card-title">Chat contestuale</div>
+                <div class="card-desc">Compare automaticamente dopo la prima descrizione. Supporta Invio per inviare.</div>
+            </div>
+        </div>
+
+        <h3>Palette colori</h3>
+        <table>
+            <thead><tr><th>Variabile CSS</th><th>Colore</th><th>Uso</th></tr></thead>
+            <tbody>
+                <tr><td>--colore-sfondo</td><td>#0d1117</td><td>Sfondo pagina (nero GitHub)</td></tr>
+                <tr><td>--colore-card</td><td>#161b22</td><td>Sfondo card e sezioni</td></tr>
+                <tr><td>--colore-primario</td><td>#7c3aed</td><td>Viola — pulsanti, accenti</td></tr>
+                <tr><td>--colore-primario-chiaro</td><td>#a78bfa</td><td>Viola chiaro — testi heading</td></tr>
+                <tr><td>--colore-successo</td><td>#3fb950</td><td>Verde — pallino connesso</td></tr>
+                <tr><td>--colore-errore</td><td>#f85149</td><td>Rosso — messaggi errore</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ====== COMPRESSIONE ====== -->
+    <section id="compressione">
+        <h2><span class="h2-icon">📦</span> Compressione immagini (Canvas API)</h2>
+        <p>
+            Prima di inviare l'immagine al server, il browser la <strong>normalizza e comprime</strong> usando la Canvas API.
+            Questo risolve problemi di compatibilità con formati come AVIF e file troppo grandi.
+        </p>
+
+        <h3>Algoritmo di ridimensionamento</h3>
+        <pre><span class="kw">const</span> <span class="prop">MAX</span> = <span class="num">1024</span>; <span class="cmt">// lato lungo massimo in pixel</span>
+<span class="kw">let</span> w = img.width, h = img.height;
+
+<span class="kw">if</span> (w > MAX || h > MAX) {
+    <span class="kw">if</span> (w > h) { h = Math.<span class="fn">round</span>(h * MAX / w); w = MAX; }
+    <span class="kw">else</span>       { w = Math.<span class="fn">round</span>(w * MAX / h); h = MAX; }
+}
+
+<span class="cmt">// Converte in JPEG con qualità 85%</span>
+<span class="kw">const</span> datiBase64 = canvas.<span class="fn">toDataURL</span>(<span class="str">"image/jpeg"</span>, <span class="num">0.85</span>);<span class="lang-tag">JS</span></pre>
+
+        <div class="card-grid">
+            <div class="info-card">
+                <span class="card-icon">📐</span>
+                <div class="card-title">Lato lungo max 1024px</div>
+                <div class="card-desc">Le proporzioni originali vengono sempre mantenute.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🎨</span>
+                <div class="card-title">Output JPEG al 85%</div>
+                <div class="card-desc">Buon compromesso tra qualità visiva e dimensione del payload.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🔄</span>
+                <div class="card-title">Formato normalizzato</div>
+                <div class="card-desc">AVIF, HEIC, WebP e qualsiasi formato supportato dal browser vengono tutti convertiti in JPEG.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====== CHAT ====== -->
+    <section id="chat">
+        <h2><span class="h2-icon">💬</span> Modulo chat</h2>
+        <p>
+            Dopo la descrizione iniziale, l'utente può fare domande libere sulla foto. Il modulo chat
+            gestisce una <strong>cronologia contestuale</strong> che viene inviata ad ogni domanda.
+        </p>
+
+        <h3>Struttura della cronologia</h3>
+        <pre><span class="cmt">// Formato dell'array cronologia (OpenAI-compatible)</span>
+[
+  { <span class="prop">role</span>: <span class="str">"assistant"</span>, <span class="prop">content</span>: <span class="str">"[Descrizione iniziale dell'AI]"</span> },
+  { <span class="prop">role</span>: <span class="str">"user"</span>,      <span class="prop">content</span>: <span class="str">"Che animale è quello a destra?"</span> },
+  { <span class="prop">role</span>: <span class="str">"assistant"</span>, <span class="prop">content</span>: <span class="str">"È un labrador di colore miele..."</span> },
+  <span class="cmt">// ... e così via</span>
+]<span class="lang-tag">JS</span></pre>
+
+        <h3>Reset automatico</h3>
+        <p>
+            Quando l'utente carica una <strong>nuova foto</strong>, la sezione chat scompare e la cronologia viene azzerata.
+            Ogni sessione di chat è legata a una specifica immagine.
+        </p>
+
+        <h3>UI/UX della chat</h3>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;">
+            <li style="color:var(--text-muted);">🔵 <strong style="color:var(--text)">Bolle viola</strong> (destra) — messaggi dell'utente</li>
+            <li style="color:var(--text-muted);">⚫ <strong style="color:var(--text)">Bolle scure</strong> (sinistra) — risposte dell'AI</li>
+            <li style="color:var(--text-muted);">⏳ <strong style="color:var(--text)">Tre puntini animati</strong> — "sta scrivendo..." mentre l'AI elabora</li>
+            <li style="color:var(--text-muted);">⌨️ <strong style="color:var(--text)">Invio</strong> per inviare (Shift+Invio va a capo)</li>
+        </ul>
+    </section>
+
+    <!-- ====== SERVER HTTP ====== -->
+    <section id="server-http">
+        <h2><span class="h2-icon">🌐</span> Server HTTP</h2>
+        <p>
+            Il server HTTP è creato con il modulo nativo <code>http</code> di Node.js (senza Express).
+            Serve i file statici dalla cartella <code>public/</code>.
+        </p>
+
+        <pre><span class="kw">const</span> serverHttp = http.<span class="fn">createServer</span>((richiesta, risposta) => {
+    <span class="cmt">// "/" → "/index.html"</span>
+    <span class="kw">const</span> url = richiesta.url === <span class="str">"/"</span> ? <span class="str">"/index.html"</span> : richiesta.url;
+    <span class="kw">const</span> percorsoFile = path.<span class="fn">join</span>(__dirname, <span class="str">"public"</span>, url);
+
+    fs.<span class="fn">readFile</span>(percorsoFile, (errore, contenuto) => {
+        <span class="kw">if</span> (errore) { risposta.<span class="fn">writeHead</span>(<span class="num">404</span>); <span class="kw">return</span>; }
+        <span class="cmt">// Header no-cache: il browser ricarica sempre l'ultima versione</span>
+        risposta.<span class="fn">writeHead</span>(<span class="num">200</span>, { <span class="str">"Cache-Control"</span>: <span class="str">"no-store, no-cache"</span> });
+        risposta.<span class="fn">end</span>(contenuto);
+    });
+});<span class="lang-tag">JS</span></pre>
+
+        <div class="alert info">
+            <span class="alert-icon">💡</span>
+            <p>Gli header <code>no-store, no-cache</code> sono impostati deliberatamente per evitare che il browser mostri versioni obsolete di <code>index.html</code> durante lo sviluppo.</p>
+        </div>
+    </section>
+
+    <!-- ====== SERVER WS ====== -->
+    <section id="server-ws">
+        <h2><span class="h2-icon">📡</span> Server WebSocket</h2>
+        <p>
+            Il server WebSocket condivide la stessa porta del server HTTP grazie all'opzione <code>{ server: serverHttp }</code>.
+            Gestisce un client alla volta per connessione.
+        </p>
+
+        <pre><span class="kw">const</span> serverWs = <span class="kw">new</span> <span class="fn">WebSocketServer</span>({ server: serverHttp });
+
+serverWs.<span class="fn">on</span>(<span class="str">"connection"</span>, (connessione) => {
+
+    connessione.<span class="fn">on</span>(<span class="str">"message"</span>, <span class="kw">async</span> (messaggioGrezzo) => {
+        <span class="kw">const</span> msg = JSON.<span class="fn">parse</span>(messaggioGrezzo.<span class="fn">toString</span>());
+
+        <span class="kw">if</span> (msg.tipo === <span class="str">"analizza_foto"</span>) {
+            <span class="cmt">// → chiama Groq, manda indietro la descrizione</span>
+        } <span class="kw">else if</span> (msg.tipo === <span class="str">"domanda_chat"</span>) {
+            <span class="cmt">// → ricostruisce contesto, chiama Groq, manda risposta</span>
+        }
+    });
+
+    connessione.<span class="fn">on</span>(<span class="str">"close"</span>, () => console.<span class="fn">log</span>(<span class="str">"👋 Browser disconnesso"</span>));
+});<span class="lang-tag">JS</span></pre>
+    </section>
+
+    <!-- ====== FUNZIONI ====== -->
+    <section id="funzioni">
+        <h2><span class="h2-icon">⚙️</span> Funzioni di supporto</h2>
+
+        <h3><code>chiamaGroq(messages)</code></h3>
+        <p>Effettua una chiamata POST all'API Groq e restituisce il testo della risposta del modello. Lancia un'eccezione se la risposta HTTP non è 2xx.</p>
+        <pre><span class="kw">async function</span> <span class="fn">chiamaGroq</span>(messages) {
+    <span class="kw">const</span> risposta = <span class="kw">await</span> <span class="fn">fetch</span>(URL_GROQ, {
+        method: <span class="str">"POST"</span>,
+        headers: {
+            <span class="str">"Authorization"</span>: <span class="str">`Bearer ${GROQ_KEY}`</span>,
+            <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>
+        },
+        body: JSON.<span class="fn">stringify</span>({ model: MODELLO, messages, max_tokens: <span class="num">1024</span> })
+    });
+    <span class="kw">if</span> (!risposta.ok) <span class="kw">throw new</span> <span class="fn">Error</span>(...);
+    <span class="kw">const</span> dati = <span class="kw">await</span> risposta.<span class="fn">json</span>();
+    <span class="kw">return</span> dati.choices[<span class="num">0</span>].message.content;
+}<span class="lang-tag">JS</span></pre>
+
+        <h3><code>invia(connessione, dati)</code></h3>
+        <p>Serializza un oggetto in JSON e lo invia sulla connessione WebSocket. Prima controlla che la connessione sia ancora aperta (<code>readyState === OPEN</code>) per evitare errori su connessioni già chiuse.</p>
+        <pre><span class="kw">function</span> <span class="fn">invia</span>(connessione, dati) {
+    <span class="kw">if</span> (connessione.readyState === connessione.OPEN) {
+        connessione.<span class="fn">send</span>(JSON.<span class="fn">stringify</span>(dati));
+    }
+}<span class="lang-tag">JS</span></pre>
+
+        <h3><code>escapeHtml(testo)</code> — Frontend</h3>
+        <p>Sostituisce i caratteri speciali HTML (<code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>) con le entità equivalenti prima di inserire il testo dell'utente nel DOM. Previene attacchi XSS.</p>
+        <pre><span class="kw">function</span> <span class="fn">escapeHtml</span>(testo) {
+    <span class="kw">return</span> testo
+        .<span class="fn">replace</span>(<span class="num">/&/g</span>,  <span class="str">"&amp;amp;"</span>)
+        .<span class="fn">replace</span>(<span class="num">/</span><span class="kw">&lt;</span><span class="num">/g</span>, <span class="str">"&amp;lt;"</span>)
+        .<span class="fn">replace</span>(<span class="num">/</span><span class="kw">&gt;</span><span class="num">/g</span>, <span class="str">"&amp;gt;"</span>);
+}<span class="lang-tag">JS</span></pre>
+    </section>
+
+    <!-- ====== VARIABILI GLOBALI ====== -->
+    <section id="variabili">
+        <h2><span class="h2-icon">🔧</span> Variabili d'ambiente e costanti</h2>
+
+        <h3>Server (<code>server.js</code>)</h3>
+        <table>
+            <thead><tr><th>Costante</th><th>Valore predefinito</th><th>Descrizione</th></tr></thead>
+            <tbody>
+                <tr><td>PORTA</td><td>process.env.PORT || 3000</td><td>Porta TCP del server</td></tr>
+                <tr><td>GROQ_KEY</td><td>process.env.GROQ_KEY</td><td>Chiave API segreta per Groq</td></tr>
+                <tr><td>URL_GROQ</td><td>https://api.groq.com/…</td><td>Endpoint REST di Groq</td></tr>
+                <tr><td>MODELLO</td><td>meta-llama/llama-4-scout-…</td><td>Identificatore modello AI</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Frontend (<code>index.html</code>)</h3>
+        <table>
+            <thead><tr><th>Variabile JS</th><th>Tipo</th><th>Descrizione</th></tr></thead>
+            <tbody>
+                <tr><td>socket</td><td>WebSocket | null</td><td>Connessione attiva al server</td></tr>
+                <tr><td>fotoCorrente</td><td>File | null</td><td>Oggetto File dell'immagine selezionata</td></tr>
+                <tr><td>datiBase64Correnti</td><td>string | null</td><td>Immagine compressa in base64 (riusata nella chat)</td></tr>
+                <tr><td>cronologia</td><td>Array&lt;{role, content}&gt;</td><td>Storico messaggi OpenAI-compatible per la chat</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ====== ERRORI ====== -->
+    <section id="errori">
+        <h2><span class="h2-icon">🛑</span> Gestione degli errori</h2>
+
+        <div class="card-grid">
+            <div class="info-card">
+                <span class="card-icon">🔑</span>
+                <div class="card-title">Chiave Groq mancante</div>
+                <div class="card-desc">Il server esce immediatamente con <code>process.exit(1)</code> e stampa un messaggio di errore chiaro in console.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🌐</span>
+                <div class="card-title">Errore API Groq</div>
+                <div class="card-desc">Se lo status HTTP non è 2xx, viene lanciata un'eccezione con il codice di stato e il corpo della risposta.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">📁</span>
+                <div class="card-title">File non trovato</div>
+                <div class="card-desc">Il server HTTP risponde con <code>404</code> se un file non esiste nella cartella <code>public/</code>.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">🖼️</span>
+                <div class="card-title">Immagine non leggibile</div>
+                <div class="card-desc">Se il Canvas API non riesce a caricare l'immagine, viene mostrato un alert all'utente e il pulsante viene riabilitato.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">📡</span>
+                <div class="card-title">WebSocket disconnesso</div>
+                <div class="card-desc">L'indicatore diventa rosso e il client riprova ogni 3 secondi fino alla riconnessione.</div>
+            </div>
+            <div class="info-card">
+                <span class="card-icon">⛔</span>
+                <div class="card-title">Errori runtime server</div>
+                <div class="card-desc">Qualsiasi eccezione non gestita viene intercettata da un <code>try/catch</code> e inviata al browser come messaggio di tipo <code>errore</code>.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====== SICUREZZA ====== -->
+    <section id="sicurezza">
+        <h2><span class="h2-icon">🛡️</span> Note sulla sicurezza</h2>
+
+        <div class="alert warning">
+            <span class="alert-icon">⚠️</span>
+            <p><strong>Uso locale:</strong> questo progetto è progettato per uso locale o su rete privata. Non esporre il server su Internet pubblico senza aggiungere autenticazione.</p>
+        </div>
+
+        <div class="alert danger">
+            <span class="alert-icon">🔴</span>
+            <p><strong>Proteggi il .env:</strong> il file <code>.env</code> contiene la tua chiave API privata. Non includerlo mai in commit Git (è già in <code>.gitignore</code>) e non condividerlo.</p>
+        </div>
+
+        <div class="alert success">
+            <span class="alert-icon">✅</span>
+            <p><strong>XSS prevenuto:</strong> i messaggi dell'utente nella chat vengono sempre sanificati tramite <code>escapeHtml()</code> prima di essere inseriti nel DOM.</p>
+        </div>
+
+        <div class="alert success">
+            <span class="alert-icon">✅</span>
+            <p><strong>Nessun dato persistito:</strong> le immagini e le conversazioni non vengono mai scritte su disco dal server. Tutto rimane in memoria per la durata della connessione.</p>
+        </div>
+
+        <div class="alert info">
+            <span class="alert-icon">💡</span>
+            <p><strong>Chiave API lato server:</strong> la <code>GROQ_KEY</code> non è mai esposta al browser. Solo il server Node.js la conosce e la usa per chiamare l'API.</p>
+        </div>
+    </section>
+
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer>
+    <span>📖 Descrittore Foto AI — Documentazione v1.0</span>
+    <span>Generata il: <time id="dataDoc"></time></span>
+</footer>
+
+<script>
+    // Data generazione
+    document.getElementById("dataDoc").textContent =
+        new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
+
+    // Evidenzia link attivo in base alla sezione visibile (IntersectionObserver)
+    const sections = document.querySelectorAll("section, .hero");
+    const navLinks  = document.querySelectorAll("nav a");
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navLinks.forEach(a => a.classList.remove("active"));
+                const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+                if (active) active.classList.add("active");
+            }
+        });
+    }, { threshold: 0.35 });
+
+    sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
