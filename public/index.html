@@ -407,7 +407,9 @@
         // Se la connessione cade, riprova ogni 3 secondi.
         // ============================================================
         function connetti() {
-            socket = new WebSocket(`ws://${window.location.host}`);
+            function connetti() {
+            const protocolloWs = window.location.protocol === "https:" ? "wss:" : "ws:";
+            socket = new WebSocket(`${protocolloWs}//${window.location.host}`);
 
             // Connessione aperta: aggiorna l'indicatore e abilita il pulsante
             socket.onopen = () => {
